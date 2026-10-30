@@ -1,0 +1,44 @@
+name: home_checklist
+description: "Daily checklists for the household team, with admin review."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  connectivity_plus: ^7.3.2
+  flutter:
+    sdk: flutter
+  hive_ce: ^2.22.0
+  hive_ce_flutter: ^2.5.0
+  image_picker: ^1.1.2
+  supabase_flutter: ^2.18.3
+  url_launcher: ^6.3.3
+  web: ^1.1.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  fonts:
+    - family: DMSans
+      fonts:
+        - asset: assets/fonts/dmsans-regular.ttf
+        - asset: assets/fonts/dmsans-medium.ttf
+          weight: 500
+        - asset: assets/fonts/dmsans-bold.ttf
+          weight: 700
+    - family: DMSerifDisplay
+      fonts:
+        - asset: assets/fonts/dmserifdisplay-regular.ttf
+    # Fallback for characters DM Sans does not cover.
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/roboto-regular.ttf
+        - asset: assets/fonts/roboto-medium.ttf
+          weight: 500
+        - asset: assets/fonts/roboto-bold.ttf
+          weight: 700

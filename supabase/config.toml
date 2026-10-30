@@ -1,0 +1,8 @@
+project_id = "vntfodgrexvrivtmvumx"
+
+# The timer calls this with its own secret, not a sign-in.
+[functions.send-reminders]
+verify_jwt = false
+
+[functions.manage-user]
+verify_jwt = true

@@ -1,0 +1,126 @@
+/* The screen shown while the app downloads and starts: the app logo with its
+   two ticks drawing in, then fading out once the app has drawn its first frame. */
+
+@font-face {
+  font-family: 'DM Serif Display';
+  src: url('assets/assets/fonts/dmserifdisplay-regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+:root {
+  --loader-page: #F7F7F4;
+  --loader-ink: #24272C;
+  --loader-muted: #5A5E66;
+  --loader-track: #EFEFEA;
+  --loader-marigold: #F2B544;
+}
+
+#loading {
+  position: fixed;
+  inset: 0;
+  z-index: 10; /* above the app until its first frame is ready */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding-inline: 16px;
+  background: var(--loader-page);
+  color: var(--loader-ink);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  text-align: center;
+  transition: opacity 0.45s ease, visibility 0.45s ease;
+}
+
+#loading.done {
+  opacity: 0;
+  visibility: hidden;
+}
+
+#loading .mark {
+  width: 92px;
+  height: 92px;
+  filter: drop-shadow(0 12px 20px rgba(36, 39, 44, 0.18));
+  animation: loader-pop 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+#loading .mark path {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: loader-draw 2.6s ease-in-out infinite both;
+}
+
+#loading .tick { stroke: var(--loader-marigold); }
+#loading .line { stroke: #fff; }
+#loading .t1 { animation-delay: 0.3s; }
+#loading .l1 { animation-delay: 0.5s; }
+#loading .t2 { animation-delay: 0.75s; }
+#loading .l2 { animation-delay: 0.95s; }
+
+#loading .name {
+  margin-top: 6px;
+  font-family: 'DM Serif Display', Georgia, 'Times New Roman', serif;
+  font-size: 26px;
+  font-weight: 400;
+  animation: loader-rise 0.6s 0.15s ease-out both;
+}
+
+#loading .bar {
+  position: relative;
+  width: 128px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--loader-track);
+  animation: loader-rise 0.6s 0.25s ease-out both;
+}
+
+#loading .bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: 4px;
+  background: var(--loader-marigold);
+  animation: loader-slide 1.3s ease-in-out infinite;
+}
+
+#loading .msg {
+  max-width: 300px;
+  min-height: 1.4em;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--loader-muted);
+}
+
+@keyframes loader-pop {
+  from { opacity: 0; transform: scale(0.82); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes loader-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Each tick and line draws in, holds, then fades so the next round can start. */
+@keyframes loader-draw {
+  0% { stroke-dashoffset: 1; opacity: 1; }
+  22% { stroke-dashoffset: 0; }
+  80% { stroke-dashoffset: 0; opacity: 1; }
+  95%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@keyframes loader-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #loading *, #loading { animation: none !important; transition: none !important; }
+  #loading .mark path { stroke-dashoffset: 0; }
+  #loading .bar span { left: 30%; }
+}

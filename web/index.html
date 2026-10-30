@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--
+    The base href is replaced by `flutter build web --base-href`. Netlify serves
+    the app from the site root, so the default "/" is right.
+  -->
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Daily checklists for the household team, with admin review.">
+  <meta name="theme-color" content="#24272C">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Checklist">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Home Checklist</title>
+  <link rel="manifest" href="manifest.json">
+
+  <link rel="preload" href="assets/assets/fonts/dmserifdisplay-regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="loading.css">
+  <style>
+    html, body { height: 100%; margin: 0; background: #F7F7F4; }
+  </style>
+</head>
+<body>
+  <div id="loading" role="status" aria-live="polite">
+    <svg class="mark" viewBox="0 0 96 96" aria-hidden="true">
+      <rect width="96" height="96" rx="24" fill="#24272C"/>
+      <path class="tick t1" pathLength="1" d="M22 35 l7.5 7.5 l14 -14"/>
+      <path class="line l1" pathLength="1" d="M53 35.5 H75"/>
+      <path class="tick t2" pathLength="1" d="M22 61 l7.5 7.5 l14 -14"/>
+      <path class="line l2" pathLength="1" d="M53 61.5 H75"/>
+    </svg>
+    <div class="name">Home Checklist</div>
+    <div class="bar"><span></span></div>
+    <span class="msg">Loading…</span>
+  </div>
+  <script src="loading.js"></script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
