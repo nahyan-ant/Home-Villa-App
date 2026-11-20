@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../format.dart';
+import '../hindi.dart';
 import '../models.dart';
 import '../screens/photo_viewer.dart';
 import '../theme.dart';
@@ -209,17 +210,17 @@ class PendingNote extends StatelessWidget {
   const PendingNote({super.key});
 
   @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.only(top: 3),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 3),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.cloud_upload_outlined, size: 15, color: Palette.amber),
-        SizedBox(width: 5),
+        const Icon(Icons.cloud_upload_outlined, size: 15, color: Palette.amber),
+        const SizedBox(width: 5),
         Flexible(
           child: Text(
-            'Saved on this phone, not sent yet',
-            style: TextStyle(color: Palette.amber, fontSize: 12.5, fontWeight: FontWeight.w700),
+            tr('Saved on this phone, not sent yet'),
+            style: const TextStyle(color: Palette.amber, fontSize: 12.5, fontWeight: FontWeight.w700),
           ),
         ),
       ],

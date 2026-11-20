@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../format.dart';
+import '../hindi.dart';
 import '../models.dart';
 import '../push/push.dart';
 import '../theme.dart';
@@ -43,9 +44,12 @@ class Checklist extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
                 child: InfoBanner(
                   icon: Icons.wifi_off,
-                  text:
-                      'No internet. Keep ticking: everything is saved on this phone and sent when '
-                      'the internet is back.${waiting > 0 ? ' $waiting waiting to send.' : ''}',
+                  text: bi(
+                    'No internet. Keep ticking: everything is saved on this phone and sent when '
+                    'the internet is back.${waiting > 0 ? ' $waiting waiting to send.' : ''}',
+                    'इंटरनेट नहीं है। काम दर्ज करती रहें: सब इस फ़ोन में सेव है और इंटरनेट आने पर भेजा जाएगा।'
+                    '${waiting > 0 ? ' $waiting भेजना बाक़ी।' : ''}',
+                  ),
                 ),
               )
             : const SizedBox(width: double.infinity),
@@ -120,7 +124,7 @@ class DaySummary extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${progress.done} of ${progress.total} done',
+                    bi('${progress.done} of ${progress.total} done', '${progress.total} में से ${progress.done} पूरे'),
                     style: const TextStyle(fontFamily: 'DMSerifDisplay', fontSize: 28, height: 1.1),
                   ),
                   const SizedBox(height: 2),
@@ -129,11 +133,11 @@ class DaySummary extends StatelessWidget {
                       children: [
                         if (progress.missed > 0)
                           TextSpan(
-                            text: '${progress.missed} missed',
+                            text: bi1('${progress.missed} missed', '${progress.missed} छूटे'),
                             style: const TextStyle(color: Palette.alert, fontWeight: FontWeight.w700),
                           ),
                         if (progress.missed > 0 && current != null) const TextSpan(text: ' · '),
-                        if (current != null) TextSpan(text: 'Now: ${current.title}'),
+                        if (current != null) TextSpan(text: '${Lang.on ? 'अभी' : 'Now'}: ${current.title}'),
                       ],
                     ),
                     maxLines: 2,
@@ -142,8 +146,8 @@ class DaySummary extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Score ${(progress.score * 100).round()}%'
-                    '${progress.weightLost > 0 ? ' (\u2212${(progress.weightLost * 100 / progress.weightTotal).round()}% for missed tasks)' : ''}',
+                    '${Lang.on ? 'स्कोर' : 'Score'} ${(progress.score * 100).round()}%'
+                    '${progress.weightLost > 0 ? ' (\u2212${(progress.weightLost * 100 / progress.weightTotal).round()}% ${Lang.on ? 'छूटे कामों के लिए' : 'for missed tasks'})' : ''}',
                     style: TextStyle(
                       color: progress.weightLost > 0 ? Palette.alert : Palette.text,
                       fontSize: 13.5,
@@ -163,8 +167,12 @@ class DaySummary extends StatelessWidget {
         const SizedBox(height: 14),
         InfoBanner(
           icon: Icons.report_outlined,
-          text: '${phase.label}: too many missed tasks recently '
-              '(${state.missesIn(personId, 7)} in the last 7 days). Every task needs a photo on time.',
+          text: bi(
+            '${phase.label}: too many missed tasks recently '
+            '(${state.missesIn(personId, 7)} in the last 7 days). Every task needs a photo on time.',
+            '${hindiOf(phase.label) ?? phase.label}: हाल में बहुत काम छूटे '
+            '(पिछले 7 दिनों में ${state.missesIn(personId, 7)})। हर काम की फ़ोटो समय पर ज़रूरी है।',
+          ),
           alert: true,
         ),
       ]);
@@ -175,8 +183,12 @@ class DaySummary extends StatelessWidget {
         const SizedBox(height: 14),
         InfoBanner(
           icon: Icons.bedtime_outlined,
-          text: 'Rest after the night emergency. ${state.person(resting.coveringId).name} does your tasks '
-              'until ${clock(resting.untilMin)}.',
+          text: bi(
+            'Rest after the night emergency. ${state.person(resting.coveringId).name} does your tasks '
+            'until ${clock(resting.untilMin)}.',
+            'रात की आपात स्थिति के बाद आराम करें। ${clock(resting.untilMin)} तक आपके काम '
+            '${state.person(resting.coveringId).name} करेगी।',
+          ),
         ),
       ]);
     }
@@ -185,8 +197,12 @@ class DaySummary extends StatelessWidget {
         const SizedBox(height: 14),
         InfoBanner(
           icon: Icons.volunteer_activism_outlined,
-          text: 'You cover ${state.person(c.restingId).name}\'s tasks until ${clock(c.untilMin)} '
-              'after the night emergency. They are in your list below.',
+          text: bi(
+            'You cover ${state.person(c.restingId).name}\'s tasks until ${clock(c.untilMin)} '
+            'after the night emergency. They are in your list below.',
+            'रात की आपात स्थिति के बाद ${clock(c.untilMin)} तक ${state.person(c.restingId).name} के काम आप करेंगी। '
+            'वे नीचे आपकी सूची में हैं।',
+          ),
         ),
       ]);
     }
@@ -196,9 +212,11 @@ class DaySummary extends StatelessWidget {
         const SizedBox(height: 14),
         InfoBanner(
           icon: Icons.event_outlined,
-          text:
-              'Working on your day off. Compensation: ${work.compensation.label}.'
-              '${work.note.isEmpty ? '' : ' ${work.note}'}',
+          text: bi(
+            'Working on your day off. Compensation: ${work.compensation.label}.'
+            '${work.note.isEmpty ? '' : ' ${work.note}'}',
+            'छुट्टी के दिन काम। बदले में: ${hindiOf(work.compensation.label) ?? work.compensation.label}।',
+          ),
         ),
       ]);
     }
@@ -209,10 +227,13 @@ class DaySummary extends StatelessWidget {
       reviewBanner = Padding(
         padding: const EdgeInsets.only(top: 14),
         child: review.status == ReviewStatus.confirmed
-            ? InfoBanner(icon: Icons.verified_outlined, text: 'Day confirmed by $by at $at.')
+            ? InfoBanner(icon: Icons.verified_outlined, text: bi('Day confirmed by $by at $at.', '$by ने $at बजे दिन पक्का किया।'))
             : InfoBanner(
                 icon: Icons.undo,
-                text: 'Sent back by $by at $at${review.note.isEmpty ? '.' : ': ${review.note}'}',
+                text: bi(
+                  'Sent back by $by at $at${review.note.isEmpty ? '.' : ': ${review.note}'}',
+                  '$by ने $at बजे वापस भेजा। दोबारा देखें।',
+                ),
                 alert: true,
               ),
       );
@@ -259,7 +280,7 @@ class DayOffView extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                adminView ? "$weekday is $name's day off" : '$weekday is your day off',
+                adminView ? "$weekday is $name's day off" : bi('$weekday is your day off', 'आज आपकी छुट्टी है'),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontFamily: 'DMSerifDisplay', fontSize: 26, height: 1.15),
               ),
@@ -267,7 +288,7 @@ class DayOffView extends StatelessWidget {
               Text(
                 adminView
                     ? 'No checklist today. You can switch on this day for an event under Schedules.'
-                    : 'No checklist today. If there is an event, you will be told in advance.',
+                    : tr('No checklist today. If there is an event, you will be told in advance.'),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Palette.muted, fontSize: 15, height: 1.4),
               ),
@@ -307,32 +328,33 @@ class _ReminderBannersState extends State<ReminderBanners> {
       if (needsHomeScreen() && !dismissed)
         ActionCard(
           icon: Icons.add_to_home_screen,
-          title: 'Add this app to your Home Screen',
-          body:
-              'iPhone only sends reminders to apps on the Home Screen. In Safari tap the Share button, '
-              'then "Add to Home Screen". Open the app from there and turn on reminders.',
-          actions: [TextButton(onPressed: () => setState(() => dismissed = true), child: const Text('Later'))],
+          title: tr('Add this app to your Home Screen'),
+          body: tr(
+            'iPhone only sends reminders to apps on the Home Screen. In Safari tap the Share button, '
+            'then "Add to Home Screen". Open the app from there and turn on reminders.',
+          ),
+          actions: [TextButton(onPressed: () => setState(() => dismissed = true), child: Text(tr1('Later')))],
         )
       else if (permission == 'default' && !dismissed)
         ActionCard(
           icon: Icons.notifications_on_outlined,
-          title: 'Turn on reminders',
-          body: 'Your phone tells you when a task or a medicine is due, and when one is not done yet.',
+          title: tr('Turn on reminders'),
+          body: tr('Your phone tells you when a task or a medicine is due, and when one is not done yet.'),
           actions: [
-            TextButton(onPressed: () => setState(() => dismissed = true), child: const Text('Not now')),
+            TextButton(onPressed: () => setState(() => dismissed = true), child: Text(tr1('Not now'))),
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
               onPressed: () => _turnOn(state),
-              child: const Text('Turn on'),
+              child: Text(tr1('Turn on')),
             ),
           ],
         )
       else if (permission == 'denied' && !dismissed)
         ActionCard(
           icon: Icons.notifications_off_outlined,
-          title: 'Reminders are blocked',
-          body: 'Allow notifications for this app in the phone settings to get task reminders.',
-          actions: [TextButton(onPressed: () => setState(() => dismissed = true), child: const Text('OK'))],
+          title: tr('Reminders are blocked'),
+          body: tr('Allow notifications for this app in the phone settings to get task reminders.'),
+          actions: [TextButton(onPressed: () => setState(() => dismissed = true), child: Text(tr1('OK')))],
         ),
     ];
     return AnimatedSize(
@@ -355,17 +377,20 @@ class _ReminderCard extends StatelessWidget {
     final task = reminder.task;
     return ActionCard(
       icon: Icons.medication_outlined,
-      title: 'Medicine time',
-      body:
-          '${reminder.dose.label} for ${reminder.parents.map((p) => p.label).join(' and ')}. '
-          '${task.title}, ${timeRange(task.start, task.end)}.',
+      title: tr1('Medicine time'),
+      body: bi(
+        '${reminder.dose.label} for ${reminder.parents.map((p) => p.label).join(' and ')}. '
+        '${task.title}, ${timeRange(task.start, task.end)}.',
+        '${reminder.parents.map((p) => hindiOf(p.label) ?? p.label).join(' और ')} के लिए '
+        '${hindiOf(reminder.dose.label) ?? reminder.dose.label}। ${hindiOf(task.title) ?? task.title}।',
+      ),
       highlight: true,
       actions: [
-        TextButton(onPressed: () => state.snooze(reminder.key), child: const Text('In 10 minutes')),
+        TextButton(onPressed: () => state.snooze(reminder.key), child: Text(tr1('In 10 minutes'))),
         FilledButton(
           style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
           onPressed: () => openTaskSheet(context, task, state.today, false),
-          child: const Text('Open'),
+          child: Text(tr1('Open')),
         ),
       ],
     );
@@ -465,7 +490,7 @@ class TaskCard extends StatelessWidget {
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
-          if (now || missed) _Pill(text: now ? 'NOW' : 'MISSED', color: accent),
+          if (now || missed) _Pill(text: tr1(now ? 'NOW' : 'MISSED'), color: accent),
           if (coveringFor != null) _Pill(text: 'COVERING ${coveringFor!.toUpperCase()}', color: Palette.amber),
         ],
       ),
@@ -481,9 +506,11 @@ class TaskCard extends StatelessWidget {
         ),
         child: Text(task.title),
       ),
+      HindiLine(task.title, size: 16, color: Palette.text),
       if (task.details.isNotEmpty) ...[
         const SizedBox(height: 4),
         Text(task.details, style: const TextStyle(color: Palette.muted, fontSize: 14, height: 1.35)),
+        HindiLine(task.details),
       ],
       if (hasExtra) ...[const SizedBox(height: 8), ExtraDaysBox(days: task.extraDays, text: task.extraNote)],
       ...[const SizedBox(height: 8), KindStatus(task: task, day: day)],
@@ -508,7 +535,7 @@ class TaskCard extends StatelessWidget {
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
           icon: const Icon(Icons.shopping_basket_outlined, size: 18),
-          label: const Text('Open shopping list'),
+          label: Text(tr1('Open shopping list')),
           onPressed: onOpenShopping,
         ),
       ],
@@ -520,7 +547,7 @@ class TaskCard extends StatelessWidget {
             ? Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
-                  'Not done: ${tick.reason.isEmpty ? 'no reason given' : tick.reason}',
+                  '${Lang.on ? 'नहीं हुआ' : 'Not done'}: ${tick.reason.isEmpty ? 'no reason given' : tick.reason}',
                   style: const TextStyle(color: Palette.alert, fontSize: 13, fontWeight: FontWeight.w500),
                 ),
               )
@@ -531,7 +558,10 @@ class TaskCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Done ${clockOf(tick.time)}${minuteOfDay(tick.time) > task.end ? ' (late)' : ''}',
+                      bi1(
+                        'Done ${clockOf(tick.time)}${minuteOfDay(tick.time) > task.end ? ' (late)' : ''}',
+                        'पूरा${minuteOfDay(tick.time) > task.end ? ' (देर से)' : ''}',
+                      ),
                       style: const TextStyle(color: Palette.ink, fontSize: 13, fontWeight: FontWeight.w700),
                     ),
                     if (!tick.sent) const PendingNote(),
@@ -542,7 +572,7 @@ class TaskCard extends StatelessWidget {
             ? Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
-                  'Not ticked by ${clock(task.end)}',
+                  bi1('Not ticked by ${clock(task.end)}', '${clock(task.end)} तक नहीं हुआ'),
                   style: const TextStyle(color: Palette.alert, fontSize: 13, fontWeight: FontWeight.w500),
                 ),
               )
@@ -632,8 +662,9 @@ class BreakRow extends StatelessWidget {
                   text: task.title,
                   style: const TextStyle(color: Palette.muted, fontWeight: FontWeight.w700),
                 ),
+                if (hindiOf(task.title) != null) TextSpan(text: ' · ${hindiOf(task.title)}'),
                 TextSpan(text: '  ${timeRange(task.start, task.end)}'),
-                if (task.details.isNotEmpty) TextSpan(text: ' · ${task.details}'),
+                if (task.details.isNotEmpty) TextSpan(text: ' · ${hindiOf(task.details) ?? task.details}'),
               ],
             ),
             style: const TextStyle(color: Palette.faint, fontSize: 13.5),
@@ -665,6 +696,7 @@ class ExtraDaysBox extends StatelessWidget {
         children: [
           TextSpan(text: '${slashDays(days)}:  ', style: const TextStyle(fontWeight: FontWeight.w700)),
           TextSpan(text: text),
+          if (hindiOf(text) != null) TextSpan(text: '\n${hindiOf(text)}'),
         ],
       ),
       style: const TextStyle(color: Palette.text, fontSize: 13.5, height: 1.35),
@@ -697,9 +729,15 @@ class KindStatus extends StatelessWidget {
                   final record = state.doseRecord(dose, parent, day);
                   final given = record != null;
                   final text = given
-                      ? '${parent.label}: given ${clockOf(record.time)} by ${state.person(record.byId).name}'
-                            '${record.sent ? '' : ' (not sent yet)'}'
-                      : '${parent.label}: ${dose.label.toLowerCase()} not given yet';
+                      ? bi(
+                          '${parent.label}: given ${clockOf(record.time)} by ${state.person(record.byId).name}'
+                          '${record.sent ? '' : ' (not sent yet)'}',
+                          '${hindiOf(parent.label)}: ${clockOf(record.time)} बजे ${state.person(record.byId).name} ने दी',
+                        )
+                      : bi(
+                          '${parent.label}: ${dose.label.toLowerCase()} not given yet',
+                          '${hindiOf(parent.label)}: ${hindiOf(dose.label)} अभी नहीं दी',
+                        );
                   return Row(
                     children: [
                       Icon(
@@ -719,7 +757,7 @@ class KindStatus extends StatelessWidget {
         );
       case TaskKind.vitals:
         if (tick == null || tick.vitals.isEmpty) {
-          return const HintChip(icon: Icons.monitor_heart_outlined, text: 'Enter BP, blood sugar and oxygen');
+          return HintChip(icon: Icons.monitor_heart_outlined, text: tr1('Enter BP, blood sugar and oxygen'));
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -729,10 +767,10 @@ class KindStatus extends StatelessWidget {
         );
       case TaskKind.photo:
         if (tick != null) return const SizedBox.shrink();
-        return const HintChip(icon: Icons.photo_camera_outlined, text: 'Photo of common areas only');
+        return HintChip(icon: Icons.photo_camera_outlined, text: tr1('Photo of common areas only'));
       case TaskKind.tick:
         if (tick != null) return const SizedBox.shrink();
-        return const HintChip(icon: Icons.photo_camera_outlined, text: 'Photo needed as proof');
+        return HintChip(icon: Icons.photo_camera_outlined, text: tr1('Photo needed as proof'));
       case TaskKind.rest:
         return const SizedBox.shrink();
     }
@@ -814,12 +852,18 @@ class TimeLogCard extends StatelessWidget {
         children: [
           Text(
             open == null
-                ? 'Break ${hoursMinutes(rest)} of 2 h \u00b7 Free time ${hoursMinutes(free)}'
-                : 'On ${open.kind.label.toLowerCase()} since ${clockOf(open.start)}',
+                ? bi(
+                    'Break ${hoursMinutes(rest)} of 2 h \u00b7 Free time ${hoursMinutes(free)}',
+                    'आराम 2 घंटे में से ${hoursMinutes(rest)} \u00b7 खाली समय ${hoursMinutes(free)}',
+                  )
+                : bi(
+                    'On ${open.kind.label.toLowerCase()} since ${clockOf(open.start)}',
+                    '${clockOf(open.start)} से ${hindiOf(open.kind.label)}',
+                  ),
             style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 2),
-          const Text('12-hour duty with a 2-hour break. Log every break and free time.', style: bodyMuted),
+          Text(tr('12-hour duty with a 2-hour break. Log every break and free time.'), style: bodyMuted),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -829,7 +873,7 @@ class TimeLogCard extends StatelessWidget {
                     FilledButton.icon(
                       style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
                       icon: const Icon(Icons.play_arrow_rounded),
-                      label: Text('End ${open.kind.label.toLowerCase()}'),
+                      label: Text(bi1('End ${open.kind.label.toLowerCase()}', '${hindiOf(open.kind.label)} ख़त्म')),
                       onPressed: state.endLog,
                     ),
                   ]
@@ -837,13 +881,13 @@ class TimeLogCard extends StatelessWidget {
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(minimumSize: const Size(0, 42)),
                       icon: const Icon(Icons.local_cafe_outlined),
-                      label: const Text('Start break'),
+                      label: Text(tr1('Start break')),
                       onPressed: () => state.startLog(TimeKind.rest),
                     ),
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(minimumSize: const Size(0, 42)),
                       icon: const Icon(Icons.self_improvement_outlined),
-                      label: const Text('Start free time'),
+                      label: Text(tr1('Start free time')),
                       onPressed: () => state.startLog(TimeKind.free),
                     ),
                   ],

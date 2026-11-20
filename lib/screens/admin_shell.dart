@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/top_actions.dart';
 import 'maid_day.dart';
+import 'meal_plan.dart';
 import 'schedules.dart';
 import 'shopping_list.dart';
 import 'team.dart';
@@ -41,6 +42,7 @@ class _AdminShellState extends State<AdminShell> {
     final title = switch (tab) {
       0 => isToday ? 'Today' : weekdayNames[shown.weekday - 1],
       1 => 'Shopping list',
+      2 => 'Meal plan',
       _ => 'Schedules',
     };
     return Scaffold(
@@ -59,7 +61,8 @@ class _AdminShellState extends State<AdminShell> {
               swapKey: '$tab ${dayKey(shown)}',
               child: switch (tab) {
                 0 => AdminToday(day: shown),
-                1 => ShoppingListView(day: shown, keepsList: false),
+                1 => ShoppingListView(day: shown, canRequest: false),
+                2 => const AdminMealPlan(),
                 _ => const SchedulesPage(),
               },
             ),
@@ -72,6 +75,7 @@ class _AdminShellState extends State<AdminShell> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Today'),
           NavigationDestination(icon: Icon(Icons.shopping_basket_outlined), label: 'Shopping'),
+          NavigationDestination(icon: Icon(Icons.restaurant_menu_outlined), label: 'Meals'),
           NavigationDestination(icon: Icon(Icons.edit_calendar_outlined), label: 'Schedules'),
         ],
       ),

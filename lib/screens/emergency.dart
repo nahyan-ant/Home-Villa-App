@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
 import '../format.dart';
+import '../hindi.dart';
 import '../models.dart';
 import '../outbox.dart';
 import '../theme.dart';
@@ -20,13 +21,13 @@ class EmergencyScreen extends StatelessWidget {
       for (final d in {state.today, state.coverDay}) ...?state.covers[dayKey(d)]?.values,
     ];
     return Scaffold(
-      appBar: AppBar(title: const Text('Emergency')),
+      appBar: AppBar(title: Text(tr1('Emergency'))),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
           Row(
             children: [
-              const Expanded(child: Text('CALL', style: sectionLabel)),
+              Expanded(child: Text(tr1('CALL'), style: sectionLabel)),
               if (isAdmin)
                 TextButton.icon(
                   icon: const Icon(Icons.add),
@@ -60,7 +61,7 @@ class EmergencyScreen extends StatelessWidget {
           const SizedBox(height: 24),
           Row(
             children: [
-              const Expanded(child: Text('WHAT TO DO', style: sectionLabel)),
+              Expanded(child: Text(tr1('WHAT TO DO'), style: sectionLabel)),
               if (isAdmin)
                 TextButton.icon(
                   icon: const Icon(Icons.edit_outlined),
@@ -76,15 +77,15 @@ class EmergencyScreen extends StatelessWidget {
             child: Text(state.sop, style: const TextStyle(fontSize: 15, height: 1.5)),
           ),
           const SizedBox(height: 12),
-          const InfoBanner(
+          InfoBanner(
             icon: Icons.chat_outlined,
-            text: 'If the app is not working, post the photos in the family WhatsApp group with the time and task.',
+            text: tr('If the app is not working, post the photos in the family WhatsApp group with the time and task.'),
           ),
           const SizedBox(height: 24),
-          const Text('NIGHT EMERGENCY', style: sectionLabel),
+          Text(tr1('NIGHT EMERGENCY'), style: sectionLabel),
           const SizedBox(height: 4),
-          const Text(
-            'If someone was up at night with an emergency, the other maid covers her morning tasks so she can rest.',
+          Text(
+            tr('If someone was up at night with an emergency, the other maid covers her morning tasks so she can rest.'),
             style: bodyMutedTall,
           ),
           const SizedBox(height: 10),
@@ -105,14 +106,14 @@ class EmergencyScreen extends StatelessWidget {
                       ),
                     ),
                     if (isAdmin || c.loggedBy == state.user?.id)
-                      TextButton(onPressed: () => state.cancelCover(c), child: const Text('Cancel')),
+                      TextButton(onPressed: () => state.cancelCover(c), child: Text(tr1('Cancel'))),
                   ],
                 ),
               ),
             ),
           OutlinedButton.icon(
             icon: const Icon(Icons.bedtime_outlined),
-            label: const Text('Log a night emergency'),
+            label: Text(tr1('Log a night emergency')),
             onPressed: () => showDialog<void>(context: context, builder: (_) => _NightDialog(state: state)),
           ),
         ],
@@ -160,7 +161,7 @@ class _NightDialogState extends State<_NightDialog> {
     final others = maids.where((m) => m.id != resting).toList();
     if (!others.any((m) => m.id == covering)) covering = others.firstOrNull?.id;
     return AlertDialog(
-      title: const Text('Night emergency'),
+      title: Text(tr1('Night emergency')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -173,7 +174,7 @@ class _NightDialogState extends State<_NightDialog> {
           DropdownButtonFormField<String>(
             initialValue: resting,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Who was up and rests'),
+            decoration: InputDecoration(labelText: tr1('Who was up and rests')),
             items: [for (final m in maids) DropdownMenuItem(value: m.id, child: Text(m.name))],
             onChanged: (id) => setState(() => resting = id),
           ),
@@ -182,7 +183,7 @@ class _NightDialogState extends State<_NightDialog> {
             key: ValueKey(resting),
             initialValue: covering,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Who covers the morning'),
+            decoration: InputDecoration(labelText: tr1('Who covers the morning')),
             items: [for (final m in others) DropdownMenuItem(value: m.id, child: Text(m.name))],
             onChanged: (id) => setState(() => covering = id),
           ),
@@ -191,7 +192,7 @@ class _NightDialogState extends State<_NightDialog> {
             controller: _note,
             maxLines: 2,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(labelText: 'What happened', hintText: 'For example: Papa had a fever at 2 AM'),
+            decoration: InputDecoration(labelText: tr1('What happened'), hintText: 'For example: Papa had a fever at 2 AM'),
           ),
         ],
       ),

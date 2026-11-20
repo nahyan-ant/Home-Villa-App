@@ -5,6 +5,7 @@ import '../format.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../templates.dart';
 import 'task_editor.dart';
 import 'team.dart';
 
@@ -106,6 +107,17 @@ class _SchedulesPageState extends State<SchedulesPage> {
             ),
           ),
         ],
+      ),
+      Align(
+        alignment: Alignment.centerRight,
+        child: TextButton.icon(
+          icon: const Icon(Icons.playlist_add_check),
+          label: const Text('Use a ready-made schedule'),
+          onPressed: () => showDialog<void>(
+            context: context,
+            builder: (_) => _TemplateDialog(state: state, personId: ownerId),
+          ),
+        ),
       ),
       const SizedBox(height: 4),
       Card(
@@ -369,4 +381,84 @@ class _WorkDialogState extends State<_WorkDialog> {
       ),
     ],
   );
+}
+
+
+/// Replaces a maid's tasks with one of the prepared schedules from a chosen day.
+class _TemplateDialog extends StatefulWidget {
+  const _TemplateDialog({required this.state, required this.personId});
+
+  final AppState state;
+  final String personId;
+
+  @override
+  State<_TemplateDialog> createState() => _TemplateDialogState();
+}
+
+class _TemplateDialogState extends State<_TemplateDialog> {
+  String template = scheduleTemplates.keys.first;
+  late DateTime from = widget.state.today;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final name = state.person(widget.personId).name;
+    final dayOff = templateDayOff[template];
+    return AlertDialog(
+      title: Text("Replace $name's schedule"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DropdownButtonFormField<String>(
+            initialValue: template,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Schedule'),
+            items: [
+              for (final e in scheduleTemplates.entries) DropdownMenuItem(value: e.key, child: Text(e.value)),
+            ],
+            onChanged: (v) => setState(() => template = v!),
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                firstDate: state.today,
+                lastDate: state.today.add(const Duration(days: 90)),
+                initialDate: from,
+                helpText: 'Starts from',
+              );
+              if (picked != null) setState(() => from = picked);
+            },
+            child: InputDecorator(
+              decoration: const InputDecoration(
+                labelText: 'Starts from',
+                suffixIcon: Icon(Icons.calendar_today_outlined, size: 20),
+              ),
+              child: Text(from == state.today ? 'Today, ${shortDate(from)}' : longDate(from)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "All of $name's tasks are replaced from ${shortDate(from)}. Earlier days stay as they were."
+            '${dayOff == null ? '' : ' Weekly day off becomes ${weekdayNames[dayOff - 1]}.'}',
+            style: bodyMutedTall,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(
+          style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
+          onPressed: () {
+            state.applyTemplate(widget.personId, template, from);
+            Navigator.of(context).pop();
+          },
+          child: const Text('Replace'),
+        ),
+      ],
+    );
+  }
 }

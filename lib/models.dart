@@ -436,9 +436,13 @@ class DayOffWork {
 }
 
 class ShopItem {
-  ShopItem(this.id, this.name, this.qty, this.bought, this.sent);
+  ShopItem(this.id, this.name, this.qty, this.bought, this.sent, {required this.byId, required this.day});
 
   final String id;
+
+  /// Who asked for it, and on which day.
+  final String byId;
+  final DateTime day;
   final String name;
   final String qty;
   bool bought;
@@ -582,4 +586,105 @@ class Progress {
 
   /// The day's score so far: everything not lost yet still counts.
   double get score => weightTotal == 0 ? 1 : (weightTotal - weightLost) / weightTotal;
+}
+
+/// The parts of a day's meal plan, in order.
+enum MealSection {
+  morning('Morning', 'सुबह'),
+  tea('Tea', 'चाय'),
+  salad('Salads', 'सलाद'),
+  main('Main dishes', 'मुख्य खाना'),
+  fruit('Fruits', 'फल');
+
+  const MealSection(this.label, this.hindi);
+  final String label;
+  final String hindi;
+}
+
+/// One dish on a weekday's meal plan, with its picture.
+class MealItem {
+  MealItem({
+    required this.id,
+    required this.personId,
+    required this.weekday,
+    required this.section,
+    required this.name,
+    this.note = '',
+    this.photo,
+    this.sort = 0,
+    this.sent = true,
+  });
+
+  factory MealItem.fromRow(Map<String, dynamic> r) => MealItem(
+    id: r['id'] as String,
+    personId: r['person_id'] as String,
+    weekday: r['weekday'] as int,
+    section: _byName(MealSection.values, r['section'] as String?, MealSection.main),
+    name: r['name'] as String,
+    note: r['note'] as String? ?? '',
+    photo: r['photo'] == null ? null : Photo(path: r['photo'] as String, label: r['name'] as String),
+    sort: r['sort'] as int? ?? 0,
+  );
+
+  final String id;
+  final String personId;
+
+  /// 1 = Monday.
+  final int weekday;
+  final MealSection section;
+  final String name;
+  final String note;
+  final Photo? photo;
+  final int sort;
+  bool sent;
+
+  Map<String, dynamic> toRow() => {
+    'id': id,
+    'person_id': personId,
+    'weekday': weekday,
+    'section': section.name,
+    'name': name,
+    'note': note,
+    'photo': photo?.path,
+    'sort': sort,
+  };
+}
+
+/// A meal made on a day, with its photo.
+class MealTick {
+  MealTick({
+    required this.day,
+    required this.itemId,
+    required this.personId,
+    required this.byId,
+    required this.time,
+    this.photos = const [],
+    this.sent = true,
+  });
+
+  factory MealTick.fromRow(Map<String, dynamic> r) => MealTick(
+    day: DateTime.parse(r['day'] as String),
+    itemId: r['item_id'] as String,
+    personId: r['person_id'] as String,
+    byId: r['by_id'] as String,
+    time: DateTime.parse(r['at'] as String).toLocal(),
+    photos: [for (final p in (r['photos'] as List? ?? const [])) Photo.fromJson((p as Map).cast<String, dynamic>())],
+  );
+
+  final DateTime day;
+  final String itemId;
+  final String personId;
+  final String byId;
+  final DateTime time;
+  final List<Photo> photos;
+  bool sent;
+
+  Map<String, dynamic> toRow() => {
+    'day': dayKey(day),
+    'item_id': itemId,
+    'person_id': personId,
+    'by_id': byId,
+    'at': time.toUtc().toIso8601String(),
+    'photos': [for (final p in photos) p.toJson()],
+  };
 }

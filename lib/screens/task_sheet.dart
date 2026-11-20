@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../app_state.dart';
 import '../format.dart';
+import '../hindi.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
@@ -92,14 +93,16 @@ class _TaskSheetState extends State<TaskSheet> {
       ),
       const SizedBox(height: 4),
       Text(task.title, style: const TextStyle(fontFamily: 'DMSerifDisplay', fontSize: 26, height: 1.15)),
+      HindiLine(task.title, size: 19, color: Palette.text),
       if (task.details.isNotEmpty) ...[
         const SizedBox(height: 8),
         Text(task.details, style: const TextStyle(color: Palette.muted, fontSize: 15, height: 1.4)),
+        HindiLine(task.details, size: 15),
       ],
       if (task.extraNote.isNotEmpty && task.extraDays.contains(day.weekday)) ...[
         const SizedBox(height: 8),
         Text(
-          '${slashDays(task.extraDays)}: ${task.extraNote}',
+          '${slashDays(task.extraDays)}: ${tr(task.extraNote)}',
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, height: 1.4),
         ),
       ],
@@ -112,7 +115,10 @@ class _TaskSheetState extends State<TaskSheet> {
       ],
       const SizedBox(height: 6),
       Text(
-        'Counts for ${task.weight} ${task.weight == 1 ? 'point' : 'points'} of the day.',
+        bi(
+          'Counts for ${task.weight} ${task.weight == 1 ? 'point' : 'points'} of the day.',
+          'दिन के ${task.weight} अंक।',
+        ),
         style: bodyMuted,
       ),
       const SizedBox(height: 20),
@@ -129,13 +135,13 @@ class _TaskSheetState extends State<TaskSheet> {
           const SizedBox(height: 12),
           OutlinedButton(
             onPressed: state.canUndo(task, day) ? () => state.undoTick(task, day) : null,
-            child: const Text('Undo'),
+            child: Text(tr1('Undo')),
           ),
           if (!state.canUndo(task, day) && tick.byId == state.user?.id)
-            const Padding(
-              padding: EdgeInsets.only(top: 6),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
               child: Text(
-                'This was already sent. Undo it when the internet is back.',
+                tr('This was already sent. Undo it when the internet is back.'),
                 textAlign: TextAlign.center,
                 style: bodyMuted,
               ),
@@ -161,7 +167,7 @@ class _TaskSheetState extends State<TaskSheet> {
         TextButton(
           style: TextButton.styleFrom(foregroundColor: Palette.alert),
           onPressed: () => _notDone(state),
-          child: const Text("I couldn't do this task"),
+          child: Text(tr1("I couldn't do this task")),
         ),
       ]);
     }
@@ -182,9 +188,9 @@ class _TaskSheetState extends State<TaskSheet> {
   Widget _doneButton(AppState state) {
     final entered = _readings();
     final String? missing = switch (task.kind) {
-      TaskKind.medicine when photos.isEmpty && !_dosesDone(state) => 'Record each dose with a photo first.',
-      TaskKind.vitals when entered.isEmpty => 'Enter the readings and add a photo.',
-      _ when photos.isEmpty && task.kind != TaskKind.medicine => 'Add a photo as proof first.',
+      TaskKind.medicine when photos.isEmpty && !_dosesDone(state) => tr('Record each dose with a photo first.'),
+      TaskKind.vitals when entered.isEmpty => tr('Enter the readings and add a photo.'),
+      _ when photos.isEmpty && task.kind != TaskKind.medicine => tr('Add a photo as proof first.'),
       _ => null,
     };
     return Column(
@@ -203,7 +209,7 @@ class _TaskSheetState extends State<TaskSheet> {
                   await state.tick(task, day, photos: photos, vitals: entered);
                   if (mounted) Navigator.of(context).pop();
                 },
-          child: Text(task.kind == TaskKind.vitals ? 'Save readings' : 'Mark done'),
+          child: Text(tr1(task.kind == TaskKind.vitals ? 'Save readings' : 'Mark done')),
         ),
       ],
     );
@@ -224,23 +230,26 @@ class _TaskSheetState extends State<TaskSheet> {
     final owner = state.doseOwner[dose];
     final me = state.user!;
     return [
-      Text(dose.label.toUpperCase(), style: sectionLabel),
+      Text(tr1(dose.label).toUpperCase(), style: sectionLabel),
       const SizedBox(height: 6),
       if (owner != null)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Text(
             owner == me.id
-                ? 'You are responsible for this dose.'
-                : '${state.person(owner).name} is responsible for this dose. Only give it if you are asked to.',
+                ? tr('You are responsible for this dose.')
+                : bi(
+                    '${state.person(owner).name} is responsible for this dose. Only give it if you are asked to.',
+                    'यह दवाई ${state.person(owner).name} देगी। कहा जाए तभी दें।',
+                  ),
             style: const TextStyle(fontSize: 14, height: 1.35),
           ),
         ),
       for (final parent in Parent.values) _parentDose(state, dose, parent),
       const SizedBox(height: 8),
       if (state.online || widget.adminView)
-        const Text(
-          'Take a photo of the medicine for each dose. Everyone sees who gave it, so it is never given twice.',
+        Text(
+          tr('Take a photo of the medicine for each dose. Everyone sees who gave it, so it is never given twice.'),
           style: bodyMutedTall,
         )
       else
@@ -251,14 +260,14 @@ class _TaskSheetState extends State<TaskSheet> {
             border: Border.all(color: Palette.alert),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.wifi_off, size: 20, color: Palette.alert),
-              SizedBox(width: 10),
+              const Icon(Icons.wifi_off, size: 20, color: Palette.alert),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'No internet: you cannot see if someone else already gave this dose. Ask the others before giving it.',
-                  style: TextStyle(color: Palette.alert, fontSize: 14, fontWeight: FontWeight.w700, height: 1.35),
+                  tr('No internet: you cannot see if someone else already gave this dose. Ask the others before giving it.'),
+                  style: const TextStyle(color: Palette.alert, fontSize: 14, fontWeight: FontWeight.w700, height: 1.35),
                 ),
               ),
             ],
@@ -273,9 +282,12 @@ class _TaskSheetState extends State<TaskSheet> {
     final given = record != null;
     final byMe = given && record.byId == state.user?.id;
     final status = given
-        ? 'Given at ${clockOf(record.time)} by ${byMe ? 'you' : state.person(record.byId).name}'
-              '${record.sent ? '' : ' (not sent yet)'}'
-        : 'Not given yet';
+        ? bi(
+            'Given at ${clockOf(record.time)} by ${byMe ? 'you' : state.person(record.byId).name}'
+            '${record.sent ? '' : ' (not sent yet)'}',
+            '${clockOf(record.time)} बजे ${byMe ? 'आपने' : '${state.person(record.byId).name} ने'} दी',
+          )
+        : tr('Not given yet');
     final photo = record?.photo;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -290,13 +302,13 @@ class _TaskSheetState extends State<TaskSheet> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(parent.label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                Text(tr1(parent.label), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 Text(status, style: TextStyle(color: given ? Palette.text : Palette.muted, fontSize: 14)),
                 if (given && !byMe && !widget.adminView)
-                  const Text(
-                    'Already given. Do not give again.',
-                    style: TextStyle(color: Palette.alert, fontSize: 13, fontWeight: FontWeight.w700),
+                  Text(
+                    tr('Already given. Do not give again.'),
+                    style: const TextStyle(color: Palette.alert, fontSize: 13, fontWeight: FontWeight.w700),
                   ),
               ],
             ),
@@ -309,7 +321,7 @@ class _TaskSheetState extends State<TaskSheet> {
             FilledButton.icon(
               style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
               icon: const Icon(Icons.photo_camera_outlined, size: 18),
-              label: const Text('Given'),
+              label: Text(tr1('Given')),
               onPressed: () async {
                 final bytes = await takePhoto();
                 if (bytes != null) await state.giveDose(dose, parent, day, bytes);
@@ -336,7 +348,7 @@ class _TaskSheetState extends State<TaskSheet> {
   }
 
   List<Widget> _vitals(Tick? tick) {
-    const privacy = PrivacyNote('Only you and admin can see these readings.');
+    final privacy = PrivacyNote(tr('Only you and admin can see these readings.'));
     if (tick != null) {
       return [
         for (final e in tick.vitals.entries) ...[
@@ -352,24 +364,24 @@ class _TaskSheetState extends State<TaskSheet> {
     if (widget.adminView) return const [];
     return [
       for (final p in Parent.values) ...[
-        Text(p.label.toUpperCase(), style: sectionLabel),
+        Text(tr1(p.label).toUpperCase(), style: sectionLabel),
         const SizedBox(height: 8),
         Row(
           children: [
-            Expanded(child: _number(readings[p]!['sys']!, 'BP top')),
+            Expanded(child: _number(readings[p]!['sys']!, tr1('BP top'))),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 6),
               child: Text('/', style: TextStyle(fontSize: 20)),
             ),
-            Expanded(child: _number(readings[p]!['dia']!, 'BP bottom')),
+            Expanded(child: _number(readings[p]!['dia']!, tr1('BP bottom'))),
           ],
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _number(readings[p]!['sugar']!, 'Blood sugar', 'mg/dL')),
+            Expanded(child: _number(readings[p]!['sugar']!, tr1('Blood sugar'), 'mg/dL')),
             const SizedBox(width: 10),
-            Expanded(child: _number(readings[p]!['oxygen']!, 'Oxygen', '%')),
+            Expanded(child: _number(readings[p]!['oxygen']!, tr1('Oxygen'), '%')),
           ],
         ),
         const SizedBox(height: 18),
@@ -394,20 +406,22 @@ class _TaskSheetState extends State<TaskSheet> {
         [for (final (i, b) in photos.indexed) Photo(path: 'new-$i', label: '${task.title}, photo ${i + 1}', bytes: b)];
     final editable = tick == null && !widget.adminView;
     return [
-      Text(task.kind == TaskKind.medicine ? 'MORE PHOTOS (OPTIONAL)' : 'PHOTO PROOF', style: sectionLabel),
+      Text(tr1(task.kind == TaskKind.medicine ? 'MORE PHOTOS (OPTIONAL)' : 'PHOTO PROOF'), style: sectionLabel),
       const SizedBox(height: 8),
       Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(color: Palette.text, borderRadius: BorderRadius.circular(16)),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.no_photography_outlined, size: 22, color: Palette.white),
-            SizedBox(width: 10),
+            const Icon(Icons.no_photography_outlined, size: 22, color: Palette.white),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Never take photos in bedrooms or bathrooms, and never of Mama or Papa. '
-                'For care tasks, photo the tray, meal, clothes or medicine instead.',
-                style: TextStyle(color: Palette.white, fontSize: 14.5, fontWeight: FontWeight.w500, height: 1.35),
+                tr(
+                  'Never take photos in bedrooms or bathrooms, and never of Mama or Papa. '
+                  'For care tasks, photo the tray, meal, clothes or medicine instead.',
+                ),
+                style: const TextStyle(color: Palette.white, fontSize: 14.5, fontWeight: FontWeight.w500, height: 1.35),
               ),
             ),
           ],
@@ -434,11 +448,11 @@ class _TaskSheetState extends State<TaskSheet> {
         OutlinedButton.icon(
           onPressed: _addPhoto,
           icon: const Icon(Icons.photo_camera_outlined),
-          label: Text(photos.isEmpty ? 'Take photo' : 'Add another photo'),
+          label: Text(tr1(photos.isEmpty ? 'Take photo' : 'Add another photo')),
         ),
         const SizedBox(height: 10),
       ],
-      const PrivacyNote('Only you and admin can see these photos.'),
+      PrivacyNote(tr('Only you and admin can see these photos.')),
       const SizedBox(height: 16),
     ];
   }
@@ -460,7 +474,7 @@ class _TaskSheetState extends State<TaskSheet> {
             state.saveNote(task, day, note.text);
             FocusScope.of(context).unfocus();
           },
-          child: Text(text.isEmpty ? 'Remove note' : 'Save note'),
+          child: Text(tr1(text.isEmpty ? 'Remove note' : 'Save note')),
         ),
       );
     } else if (saved != null) {
@@ -480,10 +494,10 @@ class _TaskSheetState extends State<TaskSheet> {
         minLines: 1,
         maxLines: 4,
         textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(
-          labelText: 'Note (optional)',
+        decoration: InputDecoration(
+          labelText: tr1('Note (optional)'),
           hintText: 'For example: Papa refused his medicine',
-          prefixIcon: Icon(Icons.sticky_note_2_outlined, size: 20),
+          prefixIcon: const Icon(Icons.sticky_note_2_outlined, size: 20),
         ),
         onChanged: (_) => setState(() {}),
       ),
@@ -516,7 +530,7 @@ class _DoneBox extends StatelessWidget {
           Expanded(
             child: Text(
               tick.done
-                  ? 'Done at ${clockOf(tick.time)} by $by$late'
+                  ? bi('Done at ${clockOf(tick.time)} by $by$late', '${clockOf(tick.time)} बजे $by ने पूरा किया')
                   : 'Not done. $by at ${clockOf(tick.time)}: ${tick.reason.isEmpty ? 'no reason given' : tick.reason}',
               style: TextStyle(
                 color: tick.done ? Palette.text : Palette.alert,
@@ -549,29 +563,29 @@ class _ReasonDialogState extends State<_ReasonDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text("Couldn't do it"),
+    title: Text(tr1("Couldn't do it")),
     content: Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('It still counts as missed. Say why, so admin knows.', style: bodyMutedTall),
+        Text(tr('It still counts as missed. Say why, so admin knows.'), style: bodyMutedTall),
         const SizedBox(height: 12),
         TextField(
           controller: _reason,
           autofocus: true,
           maxLines: 3,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Why?', hintText: 'For example: Mama was sleeping'),
+          decoration: InputDecoration(labelText: tr1('Why?'), hintText: 'For example: Mama was sleeping'),
           onChanged: (_) => setState(() {}),
         ),
       ],
     ),
     actions: [
-      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+      TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(tr1('Cancel'))),
       FilledButton(
         style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
         onPressed: _reason.text.trim().isEmpty ? null : () => Navigator.of(context).pop(_reason.text.trim()),
-        child: const Text('Save'),
+        child: Text(tr1('Save')),
       ),
     ],
   );

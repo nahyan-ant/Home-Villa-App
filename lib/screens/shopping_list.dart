@@ -2,18 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../format.dart';
+import '../hindi.dart';
+import '../models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
-/// Nisha writes the day's shopping list and hands it over; admin ticks items
-/// as they are bought.
+/// Maids request what the house needs (groceries, cleaning materials);
+/// admin ticks items as they are bought. Unbought items stay on the list.
 class ShoppingListView extends StatefulWidget {
-  const ShoppingListView({super.key, required this.day, required this.keepsList});
+  const ShoppingListView({super.key, required this.day, required this.canRequest});
 
   final DateTime day;
 
-  /// The maid who writes the list, rather than admin who buys.
-  final bool keepsList;
+  /// A maid adding requests, rather than admin who buys.
+  final bool canRequest;
 
   @override
   State<ShoppingListView> createState() => _ShoppingListViewState();
@@ -44,37 +46,33 @@ class _ShoppingListViewState extends State<ShoppingListView> {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final list = state.shoppingList(widget.day);
     final items = state.shoppingItems(widget.day);
-    final handedOver = state.viewerIsAdmin ? list.handedOverSent : list.handedOver;
-    final nisha = widget.keepsList;
-    final editable = nisha && handedOver == null;
-
-    final title = handedOver == null
-        ? (nisha ? 'Add items during the day' : 'Still being filled in')
-        : 'Handed over at ${clockOf(handedOver)}';
-    final subtitle = handedOver == null
-        ? (nisha
-              ? 'Hand the list over at the end of the day so items can be bought in time.'
-              : 'You will see "Handed over" when the list is finished.')
-        : (nisha ? 'Admin can now see the full list.' : 'Tick items as they are bought.');
+    final maid = widget.canRequest;
+    final open = items.where((i) => !i.bought).length;
 
     final children = <Widget>[
       Text(longDate(widget.day).toUpperCase(), style: sectionLabel),
       const SizedBox(height: 6),
-      Text(title, style: const TextStyle(fontFamily: 'DMSerifDisplay', fontSize: 26, height: 1.15)),
+      Text(
+        maid ? tr('What does the house need?') : (open == 0 ? 'Nothing to buy' : '$open to buy'),
+        style: const TextStyle(fontFamily: 'DMSerifDisplay', fontSize: 26, height: 1.15),
+      ),
       const SizedBox(height: 4),
-      Text(subtitle, style: const TextStyle(color: Palette.muted, fontSize: 14, height: 1.4)),
-      if (nisha && list.handedOver != list.handedOverSent) const PendingNote(),
-      if (nisha && !state.online) ...[
+      Text(
+        maid
+            ? tr('Add groceries, cleaning materials or anything else needed. Admin sees it at once.')
+            : 'Tick items as they are bought. Items not bought stay on the list.',
+        style: const TextStyle(color: Palette.muted, fontSize: 14, height: 1.4),
+      ),
+      if (maid && !state.online) ...[
         const SizedBox(height: 10),
-        const Text(
-          'No internet: changes are saved on this phone and sent when the internet is back.',
-          style: TextStyle(color: Palette.amber, fontSize: 13, fontWeight: FontWeight.w700, height: 1.35),
+        Text(
+          tr('No internet: changes are saved on this phone and sent when the internet is back.'),
+          style: const TextStyle(color: Palette.amber, fontSize: 13, fontWeight: FontWeight.w700, height: 1.35),
         ),
       ],
       const SizedBox(height: 18),
-      if (editable) ...[
+      if (maid) ...[
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -84,7 +82,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                 controller: _name,
                 focusNode: _focus,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(labelText: 'Item'),
+                decoration: InputDecoration(labelText: tr1('Item'), hintText: 'For example: Floor cleaner'),
                 onSubmitted: (_) => _add(state),
               ),
             ),
@@ -93,7 +91,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
               flex: 2,
               child: TextField(
                 controller: _qty,
-                decoration: const InputDecoration(labelText: 'Quantity'),
+                decoration: InputDecoration(labelText: tr1('Quantity')),
                 onSubmitted: (_) => _add(state),
               ),
             ),
@@ -109,76 +107,66 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         const SizedBox(height: 14),
       ],
       if (items.isEmpty)
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 24),
-          child: Text('No items yet.', style: TextStyle(color: Palette.muted, fontSize: 15)),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Text(tr('No items yet.'), style: const TextStyle(color: Palette.muted, fontSize: 15)),
         ),
-      for (final item in items)
-        Stagger(
-          key: ValueKey(item.id),
-          index: 0,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.only(left: 8),
-            decoration: BoxDecoration(
-              color: Palette.white,
-              border: Border.all(color: Colors.transparent),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Row(
+      for (final item in items) Stagger(key: ValueKey(item.id), index: 0, child: _ItemRow(item: item, maid: maid)),
+    ];
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 18, 16, 32), children: children);
+  }
+}
+
+class _ItemRow extends StatelessWidget {
+  const _ItemRow({required this.item, required this.maid});
+
+  final ShopItem item;
+  final bool maid;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final mine = item.byId == state.user?.id;
+    final asked = [
+      mine ? tr1('You asked') : bi1('Asked by ${state.person(item.byId).name}', '${state.person(item.byId).name} ने माँगा'),
+      if (item.day != state.today) shortDate(item.day),
+    ].join(' · ');
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.fromLTRB(maid ? 16 : 4, 6, 4, 6),
+      decoration: BoxDecoration(color: Palette.white, borderRadius: BorderRadius.circular(22)),
+      child: Row(
+        children: [
+          if (!maid) Checkbox(value: item.bought, onChanged: (_) => state.toggleBought(item)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (!nisha)
-                  Checkbox(
-                    value: item.bought,
-                    onChanged: handedOver == null ? null : (_) => state.toggleBought(widget.day, item),
-                  )
-                else
-                  const SizedBox(width: 4, height: 52),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.name,
-                        style: TextStyle(
-                          color: item.bought ? Palette.faint : Palette.text,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          decoration: item.bought ? TextDecoration.lineThrough : null,
-                        ),
-                      ),
-                      if (!item.sent && nisha) const PendingNote(),
-                    ],
+                Text(
+                  item.name,
+                  style: TextStyle(
+                    color: item.bought ? Palette.faint : Palette.text,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    decoration: item.bought ? TextDecoration.lineThrough : null,
                   ),
                 ),
-                Text(item.qty, style: const TextStyle(color: Palette.muted, fontSize: 15)),
-                if (editable)
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    tooltip: 'Remove ${item.name}',
-                    onPressed: () => state.removeShopItem(widget.day, item),
-                  )
-                else
-                  const SizedBox(width: 12),
+                Text(item.bought ? '$asked · ${tr1('Bought')}' : asked, style: bodyMuted),
+                if (!item.sent && mine) const PendingNote(),
               ],
             ),
           ),
-        ),
-      if (nisha) ...[
-        const SizedBox(height: 24),
-        if (handedOver == null)
-          FilledButton(
-            onPressed: items.isEmpty ? null : () => state.handOver(widget.day, true),
-            child: const Text('Hand over list'),
-          )
-        else
-          OutlinedButton(
-            onPressed: () => state.handOver(widget.day, false),
-            child: const Text('Reopen to add more'),
-          ),
-      ],
-    ];
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 18, 16, 32), children: children);
+          Text(item.qty, style: const TextStyle(color: Palette.muted, fontSize: 15)),
+          if (maid && mine && !item.bought)
+            IconButton(
+              icon: const Icon(Icons.close, size: 20),
+              tooltip: 'Remove ${item.name}',
+              onPressed: () => state.removeShopItem(item),
+            )
+          else
+            const SizedBox(width: 12),
+        ],
+      ),
+    );
   }
 }

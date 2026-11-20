@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_state.dart';
 import 'config.dart';
+import 'hindi.dart';
 import 'outbox.dart';
 import 'screens/admin_shell.dart';
 import 'screens/login_screen.dart';
@@ -15,6 +16,7 @@ import 'widgets/common.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final outbox = await Outbox.open();
+  await Lang.load();
   await Supabase.initialize(url: Config.supabaseUrl, publishableKey: Config.supabaseKey);
   runApp(HomeChecklistApp(state: AppState(outbox)));
 }

@@ -15,6 +15,8 @@ For the maids
 - Night emergency: the other maid covers the morning so she can rest.
 - Emergency screen with contact numbers and what to do.
 - Works offline: everything is saved on the phone and sent when the internet is back.
+- English + Hindi: the हिन्दी button shows Hindi next to the English on that phone
+  (Nisha's tasks and all maid screens; words are in `lib/hindi.dart`).
 - Push reminders when a task is due and when it is missed (Android, and iPhone
   once the app is added to the Home Screen).
 
@@ -26,6 +28,9 @@ For admins
 - Edit schedules with changes that start on a chosen day; earlier days keep
   the old version.
 - Approve people who sign up (as maid or admin), or add them directly.
+- Meal plan: set each weekday's dishes with pictures (Morning, Tea, Salads,
+  Main dishes, Fruits). Only a maid with a plan sees the Meal plan tab; she
+  ticks each dish with a photo.
 
 ## Accounts
 

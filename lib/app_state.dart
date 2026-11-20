@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config.dart';
+import 'hindi.dart';
 import 'format.dart';
 import 'models.dart';
 import 'outbox.dart';
@@ -18,6 +19,14 @@ import 'templates.dart';
 /// unsent changes laid on top. Every change is saved on the phone first and
 /// sent when the internet allows.
 class AppState extends ChangeNotifier {
+  /// Hindi next to the English on this phone.
+  bool get hindi => Lang.on;
+
+  void setHindi(bool value) {
+    Lang.set(value);
+    notifyListeners();
+  }
+
   AppState(this.outbox) {
     _auth = db.auth.onAuthStateChange.listen((change) {
       // Opened from a reset-password email: ask for the new password first.
@@ -87,6 +96,12 @@ class AppState extends ChangeNotifier {
   final Map<String, ShoppingList> shopping = {};
 
   final Map<String, TimeLog> timeLogs = {};
+
+  /// Every weekday's meal plan, for every maid who has one.
+  final List<MealItem> meals = [];
+
+  /// Day → meal item → made, with its photo.
+  final Map<String, Map<String, MealTick>> mealTicks = {};
   final List<Contact> contacts = [];
   final Map<String, String> settings = {};
 
@@ -204,7 +219,11 @@ class AppState extends ChangeNotifier {
                   ..validUntil = null,
           ];
     await _save([
-      Op.update('profiles', {'id': p.id}, {'role': asAdmin ? 'admin' : 'maid', 'since': dayKey(today)}),
+      Op.update('profiles', {'id': p.id}, {
+        'role': asAdmin ? 'admin' : 'maid',
+        'since': dayKey(today),
+        if (template != null && templateDayOff.containsKey(template)) 'day_off': templateDayOff[template],
+      }),
       for (final t in newTasks) Op.upsert('tasks', (t.toRow()..['series_id'] = t.id)),
     ]);
   }
@@ -299,6 +318,13 @@ class AppState extends ChangeNotifier {
       _setOnline(false);
       return;
     }
+    // Fetched apart, so the rest still loads before the meal plan tables exist.
+    List<List<Map<String, dynamic>>> mealRows;
+    try {
+      mealRows = await Future.wait([_fetch('meal_items'), _fetch('meal_ticks', byDay: true)]);
+    } catch (_) {
+      mealRows = const [[], []];
+    }
     _setOnline(true);
     _clear();
     final tables = [..._sharedTables, ..._dayTables];
@@ -306,6 +332,12 @@ class AppState extends ChangeNotifier {
       for (final row in results[i]) {
         _applyUpsert(tables[i], row, sent: true);
       }
+    }
+    for (final row in mealRows[0]) {
+      _applyUpsert('meal_items', row, sent: true);
+    }
+    for (final row in mealRows[1]) {
+      _applyUpsert('meal_ticks', row, sent: true);
     }
     for (final op in outbox.pending) {
       _apply(op);
@@ -318,9 +350,10 @@ class AppState extends ChangeNotifier {
     people.clear();
     tasks.clear();
     doseOwner.updateAll((_, _) => null);
-    for (final m in [dayOffWork, covers, ticks, doses, notes, reviews, shopping, timeLogs, settings]) {
+    for (final m in [dayOffWork, covers, ticks, doses, notes, reviews, shopping, timeLogs, settings, mealTicks]) {
       m.clear();
     }
+    meals.clear();
     contacts.clear();
   }
 
@@ -404,7 +437,17 @@ class AppState extends ChangeNotifier {
       case 'shopping_items':
         final items = shoppingList(DateTime.parse(day!)).items;
         items.removeWhere((i) => i.id == row['id']);
-        items.add(ShopItem(row['id'] as String, row['name'] as String, row['qty'] as String? ?? '', row['bought'] as bool, sent));
+        items.add(
+          ShopItem(
+            row['id'] as String,
+            row['name'] as String,
+            row['qty'] as String? ?? '',
+            row['bought'] as bool,
+            sent,
+            byId: row['created_by'] as String? ?? '',
+            day: DateTime.parse(day),
+          ),
+        );
       case 'shopping_lists':
         final list = shoppingList(DateTime.parse(day!));
         final at = row['handed_over'] == null ? null : DateTime.parse(row['handed_over'] as String).toLocal();
@@ -419,6 +462,34 @@ class AppState extends ChangeNotifier {
           ..sort((a, b) => a.sort.compareTo(b.sort));
       case 'settings':
         settings[row['key'] as String] = row['value'] as String;
+      case 'meal_items':
+        final m = MealItem.fromRow(row);
+        meals
+          ..removeWhere((x) => x.id == m.id)
+          ..add(
+            MealItem(
+              id: m.id,
+              personId: m.personId,
+              weekday: m.weekday,
+              section: m.section,
+              name: m.name,
+              note: m.note,
+              photo: m.photo == null ? null : _withBytes(m.photo!),
+              sort: m.sort,
+              sent: sent,
+            ),
+          );
+      case 'meal_ticks':
+        final t = MealTick.fromRow(row);
+        mealTicks.putIfAbsent(day!, () => {})[t.itemId] = MealTick(
+          day: t.day,
+          itemId: t.itemId,
+          personId: t.personId,
+          byId: t.byId,
+          time: t.time,
+          photos: [for (final p in t.photos) _withBytes(p)],
+          sent: sent,
+        );
     }
   }
 
@@ -466,6 +537,13 @@ class AppState extends ChangeNotifier {
         timeLogs.remove(m['id']);
       case 'emergency_contacts':
         contacts.removeWhere((c) => c.id == m['id']);
+      case 'meal_items':
+        meals.removeWhere((x) => x.id == m['id']);
+        for (final forDay in mealTicks.values) {
+          forDay.remove(m['id']);
+        }
+      case 'meal_ticks':
+        mealTicks[day]?.remove(m['item_id']);
     }
   }
 
@@ -565,6 +643,8 @@ class AppState extends ChangeNotifier {
       for (final t in newTasks) Op.upsert('tasks', (t.toRow()..['series_id'] = t.id)),
       if (copyFrom != null && person(copyFrom).dayOff != null)
         Op.update('profiles', {'id': id}, {'day_off': person(copyFrom).dayOff}),
+      if (template != null && templateDayOff.containsKey(template))
+        Op.update('profiles', {'id': id}, {'day_off': templateDayOff[template]}),
     ];
     await reload();
     await _save(ops);
@@ -646,6 +726,19 @@ class AppState extends ChangeNotifier {
   }
 
   void removeTask(String seriesId, DateTime from) => _save(_endSeries(seriesId, from));
+
+  /// Replaces all of [personId]'s tasks with [template] from [from] on.
+  /// Earlier days keep the old schedule.
+  void applyTemplate(String personId, String template, DateTime from) {
+    final series = tasks.where((t) => t.ownerId == personId).map((t) => t.seriesId).toSet();
+    _save([
+      for (final s in series) ..._endSeries(s, from),
+      for (final t in templateTasks(template, personId, from, newUuid))
+        Op.upsert('tasks', (t.toRow()..['series_id'] = t.id)),
+      if (templateDayOff.containsKey(template))
+        Op.update('profiles', {'id': personId}, {'day_off': templateDayOff[template]}),
+    ]);
+  }
 
   /// Schedule changes for [owner] that start after today.
   List<UpcomingChange> upcomingChanges(String owner) {
@@ -843,6 +936,103 @@ class AppState extends ChangeNotifier {
   void undoTick(Task task, DateTime day) =>
       _save([Op.delete('ticks', {'day': dayKey(day), 'series_id': task.seriesId})]);
 
+  // ------------------------------------------------------------ meal plan
+
+  /// Whether [personId] has a meal plan on any day (only then she sees the tab).
+  bool hasMealPlan(String personId) => meals.any((m) => m.personId == personId);
+
+  /// [personId]'s dishes for [weekday], in section order.
+  List<MealItem> mealsFor(String personId, int weekday) =>
+      meals.where((m) => m.personId == personId && m.weekday == weekday).toList()..sort((a, b) {
+        final bySection = a.section.index.compareTo(b.section.index);
+        if (bySection != 0) return bySection;
+        final bySort = a.sort.compareTo(b.sort);
+        return bySort != 0 ? bySort : a.name.compareTo(b.name);
+      });
+
+  MealTick? mealTickFor(MealItem item, DateTime day) => mealTicks[dayKey(day)]?[item.id];
+
+  /// Adds or changes a dish. A new picture replaces the old one.
+  Future<void> saveMealItem({
+    MealItem? existing,
+    required String personId,
+    required int weekday,
+    required MealSection section,
+    required String name,
+    required String note,
+    Uint8List? newPhoto,
+    bool removePhoto = false,
+  }) async {
+    Photo? photo = removePhoto ? null : existing?.photo;
+    final uploads = <String>[];
+    if (newPhoto != null) {
+      final path = 'meal/${newUuid()}.jpg';
+      await outbox.keepPhoto(path, newPhoto);
+      photo = Photo(path: path, label: name);
+      uploads.add(path);
+    }
+    final sameSection = mealsFor(personId, weekday).where((m) => m.section == section);
+    final item = MealItem(
+      id: existing?.id ?? newUuid(),
+      personId: personId,
+      weekday: weekday,
+      section: section,
+      name: name,
+      note: note,
+      photo: photo,
+      sort: existing != null && existing.section == section
+          ? existing.sort
+          : (sameSection.isEmpty ? 0 : sameSection.map((m) => m.sort).reduce((a, b) => a > b ? a : b) + 1),
+    );
+    await _save([Op.upsert('meal_items', item.toRow(), photos: uploads)]);
+  }
+
+  void removeMealItem(MealItem item) => _save([Op.delete('meal_items', {'id': item.id})]);
+
+  /// Copies [personId]'s plan for [fromWeekday] onto [toWeekday], replacing it.
+  Future<void> copyMealDay(String personId, int fromWeekday, int toWeekday) async {
+    final ops = <Op>[
+      for (final m in mealsFor(personId, toWeekday)) Op.delete('meal_items', {'id': m.id}),
+      for (final m in mealsFor(personId, fromWeekday))
+        Op.upsert(
+          'meal_items',
+          MealItem(
+            id: newUuid(),
+            personId: personId,
+            weekday: toWeekday,
+            section: m.section,
+            name: m.name,
+            note: m.note,
+            photo: m.photo,
+            sort: m.sort,
+          ).toRow(),
+        ),
+    ];
+    await _save(ops);
+  }
+
+  /// Marks a dish as made, with its photo.
+  Future<void> tickMeal(MealItem item, DateTime day, List<Uint8List> photos) async {
+    final kept = [for (final (i, b) in photos.indexed) await _keepPhoto(b, day, '${item.name}, photo ${i + 1}')];
+    final t = MealTick(
+      day: day,
+      itemId: item.id,
+      personId: item.personId,
+      byId: user!.id,
+      time: now,
+      photos: kept,
+    );
+    await _save([Op.upsert('meal_ticks', t.toRow(), photos: [for (final p in kept) p.path])]);
+  }
+
+  bool canUndoMeal(MealItem item, DateTime day) {
+    final t = mealTickFor(item, day);
+    return t != null && t.byId == user?.id && (online || !t.sent);
+  }
+
+  void undoMealTick(MealItem item, DateTime day) =>
+      _save([Op.delete('meal_ticks', {'day': dayKey(day), 'item_id': item.id})]);
+
   // ------------------------------------------------------------ medicines
 
   DoseRecord? doseRecord(Dose dose, Parent parent, DateTime day) {
@@ -1035,24 +1225,36 @@ class AppState extends ChangeNotifier {
 
   ShoppingList shoppingList(DateTime day) => shopping.putIfAbsent(dayKey(day), ShoppingList.new);
 
-  List<ShopItem> shoppingItems(DateTime day) => [...shoppingList(day).items];
+  /// [day]'s requests, plus earlier ones still not bought; to buy first.
+  List<ShopItem> shoppingItems(DateTime day) {
+    final items = [
+      for (final list in shopping.values)
+        for (final i in list.items)
+          if (i.day == day || (!i.bought && i.day.isBefore(day))) i,
+    ];
+    items.sort((a, b) {
+      if (a.bought != b.bought) return a.bought ? 1 : -1;
+      return b.day.compareTo(a.day);
+    });
+    return items;
+  }
 
-  Map<String, dynamic> _itemRow(DateTime day, ShopItem i) => {
+  Map<String, dynamic> _itemRow(ShopItem i) => {
     'id': i.id,
-    'day': dayKey(day),
+    'day': dayKey(i.day),
     'name': i.name,
     'qty': i.qty,
     'bought': i.bought,
-    'created_by': user!.id,
+    'created_by': i.byId,
   };
 
-  void addShopItem(DateTime day, String name, String qty) =>
-      _save([Op.upsert('shopping_items', _itemRow(day, ShopItem(newUuid(), name, qty, false, false)))]);
+  void addShopItem(DateTime day, String name, String qty) => _save([
+    Op.upsert('shopping_items', _itemRow(ShopItem(newUuid(), name, qty, false, false, byId: user!.id, day: day))),
+  ]);
 
-  void removeShopItem(DateTime day, ShopItem item) => _save([Op.delete('shopping_items', {'id': item.id})]);
+  void removeShopItem(ShopItem item) => _save([Op.delete('shopping_items', {'id': item.id})]);
 
-  void toggleBought(DateTime day, ShopItem item) =>
-      _save([Op.upsert('shopping_items', _itemRow(day, item)..['bought'] = !item.bought)]);
+  void toggleBought(ShopItem item) => _save([Op.upsert('shopping_items', _itemRow(item)..['bought'] = !item.bought)]);
 
   void handOver(DateTime day, bool handedOver) => _save([
     Op.upsert('shopping_lists', {
